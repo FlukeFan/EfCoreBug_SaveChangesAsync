@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Xunit;
 
 //[assembly: CollectionBehavior(DisableTestParallelization = true)] // tests pass
@@ -21,10 +20,15 @@ namespace SaveChangesAsyncTests
 
             using (var ctx = new DemoContext())
             {
-                var entityB = ctx.BEntities.AddAndSave(new EntityB()).Entity;
+                var entityB = ctx.BEntities.Add(new EntityB()).Entity;
+                ctx.SaveChanges();
                 bId = entityB.Id;
-                var entityA = ctx.AEntities.AddAndSave(new EntityA()).Entity;
-                ctx.ABJoins.AddAndSave(new EntityAB { EntityBId = entityB.Id, EntityAId = entityA.Id });
+
+                var entityA = ctx.AEntities.Add(new EntityA()).Entity;
+                ctx.SaveChanges();
+
+                ctx.ABJoins.Add(new EntityAB { EntityBId = entityB.Id, EntityAId = entityA.Id });
+                ctx.SaveChanges();
 
                 var b = ctx.BEntities.Single(e => e.Id == entityB.Id);
                 var abToRemove = ctx.ABJoins.Where(e => e.EntityBId == b.Id).ToList();
@@ -43,16 +47,6 @@ namespace SaveChangesAsyncTests
                 var queriedEntity = ctx.BEntities.SingleOrDefault(e => e.Id == bId);
                 Assert.Null(queriedEntity);
             }
-        }
-    }
-
-    public static class DbSetExtensions
-    {
-        public static EntityEntry<TEntity> AddAndSave<TEntity>(this DbSet<TEntity> dbSet, TEntity entity) where TEntity : class
-        {
-            var entry = dbSet.Add(entity);
-            entry.Context.SaveChanges();
-            return entry;
         }
     }
 
