@@ -1,9 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
+﻿using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
 using Xunit;
 
 //[assembly: CollectionBehavior(DisableTestParallelization = true)] // tests pass
@@ -48,79 +44,6 @@ namespace SaveChangesAsyncTests
                 Assert.Null(queriedEntity);
             }
         }
-    }
-
-    public class DemoContext : DbContext
-    {
-        private static bool _created;
-
-        public DemoContext()
-        {
-            if (!_created)
-                lock (typeof(DemoContext))
-                    if (!_created)
-                    {
-                        Database.EnsureDeleted();
-                        Database.EnsureCreated();
-                        _created = true;
-                    }
-        }
-
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        {
-            base.OnConfiguring(optionsBuilder);
-
-            var cn = new SqlConnectionStringBuilder
-            {
-                ConnectionString = "Server=.;Database=AsyncDemo;Trusted_Connection=True",
-                ConnectTimeout = 5, // so tests fail quicker
-                MaxPoolSize = 30,
-            }.ConnectionString;
-
-            optionsBuilder.UseSqlServer(cn, o => o.CommandTimeout(5));
-        }
-
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            base.OnModelCreating(modelBuilder);
-
-            // turn off cascading deletes
-            foreach (var relationship in modelBuilder.Model.GetEntityTypes().SelectMany(e => e.GetForeignKeys()))
-                relationship.DeleteBehavior = DeleteBehavior.Restrict;
-        }
-
-        public DbSet<EntityA> AEntities { get; set; }
-        public DbSet<EntityB> BEntities { get; set; }
-        public DbSet<EntityAB> ABJoins { get; set; }
-    }
-
-    public class EntityA
-    {
-        [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public int Id { get; set; }
-    }
-
-    public class EntityB
-    {
-        [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public int Id { get; set; }
-    }
-
-    public class EntityAB
-    {
-        [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public int Id { get; set; }
-
-        public int EntityAId { get; set; }
-
-        public int EntityBId { get; set; }
-
-        public virtual EntityA EntityA { get; set; }
-
-        public virtual EntityB EntityB { get; set; }
     }
 
     public class F000 : SaveChangesAsyncTests { }
