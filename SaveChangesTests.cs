@@ -12,35 +12,32 @@ namespace SaveChangesAsyncTests
         [Fact]
         public async Task SaveChangesAsync_Fails()
         {
-            int bId;
+            int aId;
 
             using (var ctx = new DemoContext())
             {
-                var entityB = ctx.BEntities.Add(new EntityB()).Entity;
-                ctx.SaveChanges();
-                bId = entityB.Id;
-
                 var entityA = ctx.AEntities.Add(new EntityA()).Entity;
                 ctx.SaveChanges();
+                aId = entityA.Id;
 
-                ctx.ABJoins.Add(new EntityAB { EntityBId = entityB.Id, EntityAId = entityA.Id });
+                ctx.BEntities.Add(new EntityB { EntityAId = aId });
                 ctx.SaveChanges();
 
-                var b = ctx.BEntities.Single(e => e.Id == entityB.Id);
-                var abToRemove = ctx.ABJoins.Where(e => e.EntityBId == b.Id).ToList();
-                ctx.ABJoins.RemoveRange(abToRemove);
+                var a = ctx.AEntities.Single(e => e.Id == aId);
+                var bToRemove = ctx.BEntities.Where(e => e.EntityAId == a.Id).ToList();
+                ctx.BEntities.RemoveRange(bToRemove);
 
                 await Task.CompletedTask;
 
                 await ctx.SaveChangesAsync(); // tests fail, but they pass with this commented out
 
-                ctx.BEntities.Remove(b);
+                ctx.AEntities.Remove(a);
                 ctx.SaveChanges();
             }
 
             using (var ctx = new DemoContext())
             {
-                var queriedEntity = ctx.BEntities.SingleOrDefault(e => e.Id == bId);
+                var queriedEntity = ctx.AEntities.SingleOrDefault(e => e.Id == aId);
                 Assert.Null(queriedEntity);
             }
         }
