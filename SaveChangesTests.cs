@@ -1,44 +1,60 @@
 ﻿using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
 //[assembly: CollectionBehavior(DisableTestParallelization = true)] // tests pass
-[assembly: CollectionBehavior(MaxParallelThreads = 2)] // tests fail
+//[assembly: CollectionBehavior(MaxParallelThreads = 2)] // tests fail
 
 namespace SaveChangesAsyncTests
 {
     public class SaveChangesAsyncTests
     {
+        // ensure only 2 tests are running at any given time
+        private static Semaphore _semaphore = new Semaphore(2, 2);
+
         [Fact]
         public async Task SaveChangesAsync_Fails()
         {
             int aId;
+            var semaphoreAcquired = false;
 
-            using (var ctx = new DemoContext())
+            try
             {
-                var entityA = ctx.AEntities.Add(new EntityA()).Entity;
-                ctx.SaveChanges();
-                aId = entityA.Id;
+                semaphoreAcquired = _semaphore.WaitOne();
+                Assert.True(semaphoreAcquired);
 
-                ctx.BEntities.Add(new EntityB { EntityAId = aId });
-                ctx.SaveChanges();
+                using (var ctx = new DemoContext())
+                {
+                    var entityA = ctx.AEntities.Add(new EntityA()).Entity;
+                    ctx.SaveChanges();
+                    aId = entityA.Id;
 
-                var a = ctx.AEntities.Single(e => e.Id == aId);
-                var bToRemove = ctx.BEntities.Where(e => e.EntityAId == a.Id).ToList();
-                ctx.BEntities.RemoveRange(bToRemove);
+                    ctx.BEntities.Add(new EntityB { EntityAId = aId });
+                    ctx.SaveChanges();
 
-                await Task.CompletedTask;
+                    var a = ctx.AEntities.Single(e => e.Id == aId);
+                    var bToRemove = ctx.BEntities.Where(e => e.EntityAId == a.Id).ToList();
+                    ctx.BEntities.RemoveRange(bToRemove);
 
-                await ctx.SaveChangesAsync(); // tests fail, but they pass with this commented out
+                    await Task.CompletedTask;
 
-                ctx.AEntities.Remove(a);
-                ctx.SaveChanges();
+                    await ctx.SaveChangesAsync(); // tests fail, but they pass with this commented out
+
+                    ctx.AEntities.Remove(a);
+                    ctx.SaveChanges();
+                }
+
+                using (var ctx = new DemoContext())
+                {
+                    var queriedEntity = ctx.AEntities.SingleOrDefault(e => e.Id == aId);
+                    Assert.Null(queriedEntity);
+                }
             }
-
-            using (var ctx = new DemoContext())
+            finally
             {
-                var queriedEntity = ctx.AEntities.SingleOrDefault(e => e.Id == aId);
-                Assert.Null(queriedEntity);
+                if (semaphoreAcquired)
+                    _semaphore.Release();
             }
         }
     }
