@@ -47,5 +47,4 @@ namespace SaveChangesAsyncTests
         public DbSet<EntityA> AEntities { get; set; }
         public DbSet<EntityB> BEntities { get; set; }
     }
-
 }
