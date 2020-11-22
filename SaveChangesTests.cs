@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -21,7 +22,7 @@ namespace SaveChangesAsyncTests
 
             try
             {
-                semaphoreAcquired = _semaphore.WaitOne();
+                semaphoreAcquired = _semaphore.WaitOne(TimeSpan.FromSeconds(10));
                 Assert.True(semaphoreAcquired);
 
                 using (var ctx = new DemoContext())
