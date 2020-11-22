@@ -6,12 +6,13 @@ namespace SaveChangesAsyncTests
 {
     public class DemoContext : DbContext
     {
+        private static object _lock = new object();
         private static bool _created;
 
         public DemoContext()
         {
             if (!_created)
-                lock (typeof(DemoContext))
+                lock (_lock)
                     if (!_created)
                     {
                         Database.EnsureDeleted();
